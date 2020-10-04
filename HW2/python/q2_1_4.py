@@ -13,9 +13,9 @@ cv_desk = cv2.imread('../data/cv_desk.png')
 
 matches, locs1, locs2 = matchPics(cv_cover, cv_desk, opts)
 
-#display matched features
+# display matched features
 plotMatches(cv_cover, cv_desk, matches, locs1, locs2)
 
 # Q2.1.6 RotTest
-rotTest()
+#rotTest()
 
