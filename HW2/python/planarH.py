@@ -18,7 +18,6 @@ def computeH(x1, x2):
 	
 	A = np.zeros(2*N, 9)
 
-
 # Compute homography matrix
 	for i in range(N):
 
@@ -40,6 +39,9 @@ def computeH_norm(x1, x2): # this function normalizes the cooredinates
 	#Q2.2.2
 	# x1 and x2 are N X 2 matrices containing point pairs between two images
 
+	x1_arr = np.asarray(x1)
+	x2_arr = np.asaray(x2)
+
 	n = x1.shape[0]
 	if x2.shape[0] !=n:
 		print('Error: number of points dont match')
@@ -50,21 +52,33 @@ def computeH_norm(x1, x2): # this function normalizes the cooredinates
 	x1 = x1 / x1[0]	
 	mean_x1 = np.mean(x1[:1], axis=1)
 	S1 = np.sqrt(2)/np.max(x1[0:])
+
 	T1 = np.array([[S1 , 0 , -S1*mean_x1[0]], [ 0 , S1, -S1*mean_x1[1]] , [0,0,1]]) #T = [[1/sx, 0, -mx/sx], [0, 1/sy, -my/sy], [0, 0, 1]] normalizing transformation in matrix form
 	x1 = np.dot(T1,x1)
 
 	x2 = x2 / x2[0]	
 	mean_x2 = np.mean(x2[:1], axis=1)
 	S2 = np.sqrt(2)/np.max(x2[0:]) # use max value not std dev
+
 	T2 = np.array([[S2 , 0 , -S2*mean_x2[0]], [ 0 , S2, -S2*mean_x2[1]] , [0,0,1]]) #T = [[1/sx, 0, -mx/sx], [0, 1/sy, -my/sy], [0, 0, 1]] normalizing transformation in matrix form
 	x2 = np.dot(T2,x2)
 
+	#compute homogenous coordinates 
+	x1_hom = np.hstack((x2, np.ones((x1_array.shape[0],1))))
+	x2_hom = np.hstack((x2, np.ones((x2_array.shape[0],1))))
+
+	for row in range(x1_hom.shape[0]):
+		x1_norm = np.asarray([np.matmlu(T1, x1_hom[row]), (0:2)] )## SOME BUG HERE at [0:2 or (0:2)?
+
+	for row in range (x2_hom.shape[0]):
+		x2_norm = np.asarray([np.matmlu(T2, x2_hom[row]), (0:2)]) ## SOME BUG HERE
+
 	#Compute homography
-	HcomputeH(x1, x2)
+	normed_H = HcomputeH(x1_norm, x2_norm)
 
 	#Denormalization H = inv(T2)*H*T1
 	T2inv = np.linalg.inv(T2)
-	H2to1 = T2inv * H * T1
+	H2to1 = T2inv * normed_H * T1
 
 	return H2to1
 
@@ -88,36 +102,29 @@ def computeH_ransac(locs1, locs2, opts):
 	max_iters = opts.max_iters  # the number of iterations to run RANSAC for = default 500
 	inlier_tol = opts.inlier_tol # the tolerance value for considering a point to be an inlier = default 2
 	
-	n = np.min(locs1.shape[0],locs2.shape[0]) ## SOME BUG HERE
-	
 	if locs2.shape[0] !=n:
 		print('Error: number of points dont match')
-	
-	x1=[]
-	x2=[]
-
-	for iteration in range(max_iters):# random selection of data set (4 points) S which contains outliers
-		idx = np.random.choice (n,4, replace=False)
 		
-		for i in range (idx.shape[0]):
-			x1 = locs1[idx] # x1 and x2 are N X 2 matrices containing MATCHED point pairs between two images to feed computeH_norm(x1, x2)
-			x2 = locs2[idx] #x2 is a point in locs2, x1 is a point in locs 1
+	bestH2to1=[]
+	inliers=[]
+	n = locs1.shape[0]
 
-		# compute homography with computeH_norm
-		H = computeH(x1,x2) # 3 x 3 homography matrix 
+	for i in range(max-iters):
+		idx = np.random.choice (n,4, replace=False) # random selection of data set (4 points) which contains outliers
+		locs1_samp = np.array(locs1[idx] for idx in idx)
+		locs1_samp = np.array(locs2[idx] for idx in idx)
+		h = computeH_norm(locs1_samp, locs2_samp)
 
-		# COMPUTE INLIERS - a vector of length 1 that matches that are part of consensus set, and 0 elsewhere
-			
+
 		# Comput Inliers - compute reprojection error and squared error distance
-		X_homography = np.append(np.transpose(locs1),np.ones(n,1), axis = 0) # N x 2 transposed to 2 x N
-		U_homography = np.append(np.transpose(locs2),np.ones(n,1), axis = 0) 
-		reproj = np.matmul(H, U_homography) 
+		X_homo = np.append(np.transpose(locs1),np.ones(n,1), axis = 0) # N x 2 transposed to 2 x N
+		U_homo = np.append(np.transpose(locs2),np.ones(n,1), axis = 0) 
+		reproj = np.matmul(h, U_homo) 
 		reproj_norm = np.divide(reproj, reproj[2,:])
 			
-		inliers = 0 #initialize at 0
-		maxNum_inliers= 0 #initialize at 0
+		maxNum_inliers= 0 #initialize
 
-		error = X_homography-reproj_norm
+		error = X_homo-reproj_norm
 			
 		for i in range(n):
 			sq_dist = error[0,i]**2 + error[1,i] # compute squared error distance before comparing with tolerance^2
@@ -127,7 +134,7 @@ def computeH_ransac(locs1, locs2, opts):
 			print(inliers)
 
 			if inliers > maxNum_inliers:
-				bestH2to1 =H #assign new H to best H
+				bestH2to1 = h #assign new H to best H
 				inliers = maxNum_inliers #assign new inlier number to maxNumber of inliers
 			
 			print("max number of RANSAC inliers: ", maxNum_inliers)
@@ -144,20 +151,24 @@ def compositeH(H2to1, template, img):
 	
 	#Create a composite image after warping the template image on top
 	#of the image using the homography
-
 	#Note that the homography we compute is from the image to the template;
 	#x_template = H2to1*x_photo
 	#For warping the template to the image, we need to invert it.
-	
 
-	#Create mask of same size as template
+	# Create mask of same size as template
+	template_warp = cv2.warpPerspective(template,H2to1,(img.shape[1],img.shape[0]))
 
-	#Warp mask by appropriate homography
+	# Initialize blank template (all black) and warp with H2to1
+	template_blank = 0*np.ones(template.shape[:2], dtype = np.uint8)
+	template_blank_warped = cv2.warpPerspective(template_blank, H2to1, (img.shape[1],img.shape[0]))
 
-	#Warp template by appropriate homography
+	# Invert blank template, apply template to mask img
+	template_blank_inversed = cv.bitwise_not(template_blank_warped)
+	masked_img = cv2.bitwise_and(img, img, mask=template_blank_inversed)
 
 	#Use mask to combine the warped template and the image
-	
+	composite_img = cv2.bitwise_or(masked_img, template_warp)
+
 	return composite_img
 
 
