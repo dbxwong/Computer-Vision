@@ -58,7 +58,8 @@ def computeH_norm(x1, x2): # this function normalizes the cooredinates
 	x1_arr = np.asarray(x1)
 	x2_arr = np.asarray(x2)
 
-	flattened_coords = np.hstack((x1_arr, x2_arr)) ## to edit
+	#flattened_coords = np.hstack((x1_arr, x2_arr))
+	flattened_coords = np.flatten((x2_arr,x2_arr))
 
 	mean_x1, mean_y1, mean_x2, mean_y2 = np.mean(flattened_coords, axis=0)
 	 	# shift origin of points to centroid (points - mean)
