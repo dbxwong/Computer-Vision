@@ -12,7 +12,7 @@ def LucasKanade(It, It1, rect, threshold, num_iters, p0=np.zeros(2)):
     :return: p: movement vector [dp_x, dp_y]
     """
 
-    # Put your implementation here
+    # Put your implementation here - reference: http://www.cse.psu.edu/~rtc12/CSE486/lecture30.pdf 
     p = p0
     
     x1, y1= rect[0], rect[1]
